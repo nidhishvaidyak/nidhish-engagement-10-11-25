@@ -6,7 +6,7 @@
       name="viewport"
       content="width=device-width, initial-scale=1.0, user-scalable=yes"
     />
-    <title>Nidhish & Sthuthi</title>
+    <title>Nidhish & Sthuthi Engagement Ceremony</title>
 
     <style>
       /* ===== BACKGROUND ===== */
@@ -23,12 +23,13 @@
       body {
         margin: 0;
         font-family: Arial, sans-serif;
+        background: #0f172a;
       }
 
       header {
         background: linear-gradient(135deg, #4f46e5, #3b82f6);
         color: white;
-        padding: 15px;
+        padding: 16px;
         text-align: center;
         font-size: 22px;
       }
@@ -36,12 +37,13 @@
       .tabs {
         display: flex;
         justify-content: center;
+        gap: 10px;
         margin: 15px;
+        flex-wrap: wrap;
       }
 
       .tab {
-        padding: 10px 25px;
-        margin: 0 10px;
+        padding: 10px 22px;
         border-radius: 25px;
         background: rgba(229, 231, 235, 0.9);
         cursor: pointer;
@@ -60,21 +62,28 @@
         padding: 15px;
       }
 
-      /* IMAGES */
+      /* Images */
       .grid img {
         width: 100%;
         height: 160px;
         object-fit: cover;
         border-radius: 12px;
         cursor: pointer;
-        -webkit-touch-callout: none;
         user-select: none;
+        -webkit-user-drag: none;
       }
 
-      /* VIDEOS */
+      /* Videos - stacked one below the other */
+      #videos.grid {
+        grid-template-columns: 1fr !important;
+      }
+
       .grid video {
-        width: 200%;
-        height: 260px;
+        width: 100%;
+        height: auto;
+        max-height: 320px;
+        display: block;
+        margin-bottom: 15px;
         object-fit: contain;
         border-radius: 12px;
         background: black;
@@ -84,7 +93,7 @@
         display: none;
       }
 
-      /* ===== FULLSCREEN IMAGE ===== */
+      /* ===== FULLSCREEN OVERLAY ===== */
       .overlay {
         position: fixed;
         inset: 0;
@@ -93,25 +102,35 @@
         align-items: center;
         justify-content: center;
         z-index: 1000;
+        flex-direction: column;
       }
 
       .overlay img {
         max-width: 90%;
-        max-height: 90%;
+        max-height: 80%;
         transition: transform 0.3s ease;
         touch-action: pinch-zoom;
         user-select: none;
         -webkit-user-drag: none;
       }
 
-      .close {
+      .top-bar {
         position: fixed;
-        top: 15px;
-        right: 20px;
-        font-size: 35px;
-        color: white;
-        cursor: pointer;
+        top: 10px;
+        right: 10px;
+        display: flex;
+        gap: 10px;
         z-index: 1002;
+      }
+
+      .icon-btn {
+        background: rgba(0, 0, 0, 0.6);
+        color: white;
+        border: none;
+        font-size: 16px;
+        padding: 10px 14px;
+        border-radius: 8px;
+        cursor: pointer;
       }
 
       .nav {
@@ -122,7 +141,7 @@
         color: white;
         cursor: pointer;
         z-index: 1002;
-        padding: 14px;
+        padding: 12px;
         background: rgba(0, 0, 0, 0.45);
         border-radius: 50%;
         user-select: none;
@@ -141,8 +160,8 @@
           height: 130px;
         }
         .grid video {
-          height: 220px;
-          width: 200%;
+          height: auto;
+          max-height: 220px;
         }
         .nav {
           font-size: 26px;
@@ -155,95 +174,101 @@
   <body>
     <div class="bg" id="bg"></div>
 
-    <header>Nidhish & Sthuthi Engagement • 10-11-2025</header>
+    <header>💍 Nidhish & Sthuthi Engagement </br> 10-11-2025</header>
 
     <div class="tabs">
-      <div class="tab active" onclick="showTab('images')">Images</div>
-      <div class="tab" onclick="showTab('videos')">Videos</div>
+      <div class="tab active" onclick="showTab('images', this)">Images</div>
+      <div class="tab" onclick="showTab('videos', this)">Videos</div>
+      <div class="tab" onclick="showTab('candid', this)">Nidhish & Sthuthi</div>
     </div>
 
     <div id="images" class="grid"></div>
+    <div id="candid" class="grid hidden"></div>
     <div id="videos" class="grid hidden"></div>
 
-    <!-- IMAGE OVERLAY -->
+    <!-- OVERLAY -->
     <div class="overlay" id="imageOverlay">
-      <span class="close" onclick="closeOverlay()">✕</span>
+      <div class="top-bar">
+        <button class="icon-btn" onclick="downloadImage()">⬇️ Download</button>
+        <button class="icon-btn" onclick="closeOverlay()">✕</button>
+      </div>
+
       <span class="nav left" onclick="navigate(-1)">❮</span>
       <img id="overlayImg" />
       <span class="nav right" onclick="navigate(1)">❯</span>
     </div>
 
     <script>
-      /* ===== SECURITY ===== */
       if (sessionStorage.getItem("authorized") !== "yes") {
         document.body.innerHTML =
-          "<h2 style='text-align:center;margin-top:50px;'>❌ Access Denied</h2>";
+          "<h2 style='text-align:center;color:white;margin-top:50px;'>❌ Access Denied</h2>";
       }
 
-      let images = [];
-      let currentIndex = 0;
-      let bgIndex = 0;
-      let rotation = 0;
+      let images = [],
+        candid = [];
+      let currentList = [],
+        currentFolder = "";
+      let currentIndex = 0,
+        rotation = 0,
+        bgIndex = 0;
 
       const bg = document.getElementById("bg");
       const overlayImg = document.getElementById("overlayImg");
 
       fetch("media.json")
-        .then((res) => res.json())
+        .then((r) => r.json())
         .then((data) => {
-          images = data.images;
+          images = data.images || [];
+          candid = data.candid || [];
 
-          const imgContainer = document.getElementById("images");
-          const vidContainer = document.getElementById("videos");
+          loadImages(images, "photos", "images");
+          loadImages(candid, "candid", "candid");
 
-          data.images.forEach((img, index) => {
-            const el = document.createElement("img");
-            el.src = `photos/${img}`;
-            el.onclick = () => openImage(index);
-            imgContainer.appendChild(el);
+          data.videos.forEach((v) => {
+            const vid = document.createElement("video");
+            vid.src = `videos/${v}`;
+            vid.controls = true;
+            vid.controlsList = "nodownload";
+            document.getElementById("videos").appendChild(vid);
           });
 
-          data.videos.forEach((video) => {
-            const v = document.createElement("video");
-            v.src = `videos/${video}`;
-            v.controls = true;
-            v.controlsList = "nodownload";
-            v.playsInline = true;
-            vidContainer.appendChild(v);
-          });
-
-          if (images.length) {
+          if (images.length)
             bg.style.backgroundImage = `url(photos/${images[0]})`;
-          }
 
           setInterval(() => {
+            if (!images.length) return;
             bgIndex = (bgIndex + 1) % images.length;
             bg.style.backgroundImage = `url(photos/${images[bgIndex]})`;
           }, 5000);
         });
 
-      function showTab(tab) {
+      function loadImages(list, folder, containerId) {
+        const container = document.getElementById(containerId);
+        list.forEach((img, i) => {
+          const el = document.createElement("img");
+          el.src = `${folder}/${img}`;
+          el.onclick = () => openImage(list, folder, i);
+          container.appendChild(el);
+        });
+      }
+
+      function showTab(tab, el) {
         document
           .querySelectorAll(".tab")
           .forEach((t) => t.classList.remove("active"));
-        imagesDiv = document.getElementById("images");
-        videosDiv = document.getElementById("videos");
-        imagesDiv.classList.add("hidden");
-        videosDiv.classList.add("hidden");
-
-        if (tab === "images") {
-          imagesDiv.classList.remove("hidden");
-          document.querySelectorAll(".tab")[0].classList.add("active");
-        } else {
-          videosDiv.classList.remove("hidden");
-          document.querySelectorAll(".tab")[1].classList.add("active");
-        }
+        document
+          .querySelectorAll(".grid")
+          .forEach((g) => g.classList.add("hidden"));
+        document.getElementById(tab).classList.remove("hidden");
+        el.classList.add("active");
       }
 
-      function openImage(index) {
+      function openImage(list, folder, index) {
+        currentList = list;
+        currentFolder = folder;
         currentIndex = index;
         rotation = 0;
-        overlayImg.src = `photos/${images[index]}`;
+        overlayImg.src = `${folder}/${list[index]}`;
         overlayImg.style.transform = "rotate(0deg)";
         document.getElementById("imageOverlay").style.display = "flex";
       }
@@ -253,26 +278,27 @@
       }
 
       function navigate(dir) {
-        currentIndex = (currentIndex + dir + images.length) % images.length;
+        currentIndex =
+          (currentIndex + dir + currentList.length) % currentList.length;
         rotation = 0;
-        overlayImg.src = `photos/${images[currentIndex]}`;
+        overlayImg.src = `${currentFolder}/${currentList[currentIndex]}`;
         overlayImg.style.transform = "rotate(0deg)";
       }
 
-      /* 🔄 ROTATE ON TAP */
-      overlayImg.addEventListener("click", (e) => {
+      overlayImg.onclick = (e) => {
         e.stopPropagation();
         rotation = (rotation + 90) % 360;
         overlayImg.style.transform = `rotate(${rotation}deg)`;
-      });
+      };
 
-      /* 🚫 DISABLE RIGHT CLICK */
+      function downloadImage() {
+        const a = document.createElement("a");
+        a.href = overlayImg.src;
+        a.download = currentList[currentIndex];
+        a.click();
+      }
+
       document.addEventListener("contextmenu", (e) => e.preventDefault());
-
-      /* TAP OUTSIDE CLOSE */
-      document.getElementById("imageOverlay").addEventListener("click", (e) => {
-        if (e.target.id === "imageOverlay") closeOverlay();
-      });
     </script>
   </body>
 </html>
