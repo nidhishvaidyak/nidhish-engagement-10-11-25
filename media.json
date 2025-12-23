@@ -1,10 +1,12 @@
 {
   "images": [
-    "Nidhish_Pic.jpg",
-    "Nidhish_Piccopy.jpg"
+    "photo_0001.jpeg",
+    "photo_0002.jpeg",
+    "photo_0003.jpeg",
+    "photo_0004.jpeg",
+    "photo_0005.jpeg"
   ],
   "videos": [
-    "video1.mp4",
     "video1.mp4"
   ]
 }

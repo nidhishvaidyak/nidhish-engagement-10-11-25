@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Nidhish & Sthuthi</title>
+
+    <style>
+      /* ===== BACKGROUND SLIDESHOW ===== */
+      .bg {
+        position: fixed;
+        inset: 0;
+        background-size: cover;
+        background-position: center;
+        filter: blur(18px) brightness(0.6);
+        transition: background-image 1.2s ease-in-out;
+        z-index: -1;
+      }
+
+      body {
+        margin: 0;
+        font-family: Arial, sans-serif;
+        background: transparent;
+      }
+
+      header {
+        background: linear-gradient(135deg, #4f46e5, #3b82f6);
+        color: white;
+        padding: 15px;
+        text-align: center;
+        font-size: 22px;
+      }
+
+      .tabs {
+        display: flex;
+        justify-content: center;
+        margin: 15px;
+      }
+
+      .tab {
+        padding: 10px 25px;
+        margin: 0 10px;
+        border-radius: 25px;
+        background: rgba(229, 231, 235, 0.9);
+        cursor: pointer;
+        font-weight: bold;
+      }
+
+      .tab.active {
+        background: #3b82f6;
+        color: white;
+      }
+
+      .grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+        gap: 15px;
+        padding: 15px;
+      }
+
+      .grid img,
+      .grid video {
+        width: 100%;
+        height: 160px;
+        object-fit: cover;
+        border-radius: 12px;
+        cursor: pointer;
+        background: #000;
+      }
+
+      .hidden {
+        display: none;
+      }
+
+      /* ===== FULLSCREEN IMAGE OVERLAY ===== */
+      .overlay {
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.95);
+        display: none;
+        align-items: center;
+        justify-content: center;
+        z-index: 1000;
+      }
+
+      .overlay img {
+        max-width: 95%;
+        max-height: 95%;
+        transform: scale(1);
+        transition: transform 0.3s ease;
+      }
+
+      .close {
+        position: absolute;
+        top: 15px;
+        right: 20px;
+        font-size: 35px;
+        color: white;
+        cursor: pointer;
+        z-index: 1001;
+      }
+
+      .nav {
+        position: absolute;
+        top: 50%;
+        font-size: 40px;
+        color: white;
+        cursor: pointer;
+        user-select: none;
+      }
+
+      .nav.left {
+        left: 15px;
+      }
+
+      .nav.right {
+        right: 15px;
+      }
+
+      @media (max-width: 600px) {
+        .grid img,
+        .grid video {
+          height: 130px;
+        }
+      }
+    </style>
+  </head>
+
+  <body>
+    <!-- BACKGROUND -->
+    <div class="bg" id="bg"></div>
+
+    <header>Nidhish & Sthuthi Engagement • 10-11-2025</header>
+
+    <div class="tabs">
+      <div class="tab active" onclick="showTab('images')">Images</div>
+      <div class="tab" onclick="showTab('videos')">Videos</div>
+    </div>
+
+    <div id="images" class="grid"></div>
+    <div id="videos" class="grid hidden"></div>
+
+    <!-- FULLSCREEN IMAGE -->
+    <div class="overlay" id="imageOverlay">
+      <span class="close" onclick="closeOverlay()">✕</span>
+      <span class="nav left" onclick="navigate(-1)">❮</span>
+      <img id="overlayImg" />
+      <span class="nav right" onclick="navigate(1)">❯</span>
+    </div>
+
+    <script>
+      /* ===== SECURITY CHECK ===== */
+      if (sessionStorage.getItem("authorized") !== "yes") {
+        document.body.innerHTML =
+          "<h2 style='text-align:center;margin-top:50px;'>❌ Access Denied</h2>";
+      }
+
+      let images = [];
+      let currentIndex = 0;
+      let bgIndex = 0;
+
+      const bg = document.getElementById("bg");
+
+      fetch("media.json")
+        .then((res) => res.json())
+        .then((data) => {
+          images = data.images;
+
+          const imgContainer = document.getElementById("images");
+          const vidContainer = document.getElementById("videos");
+
+          /* ===== LOAD IMAGES ===== */
+          data.images.forEach((img, index) => {
+            const el = document.createElement("img");
+            el.src = `photos/${img}`;
+            el.onclick = () => openImage(index);
+            imgContainer.appendChild(el);
+          });
+
+          /* ===== LOAD VIDEOS (UNCHANGED) ===== */
+          data.videos.forEach((video) => {
+            const v = document.createElement("video");
+            v.src = `videos/${video}`;
+            v.controls = true;
+            v.playsInline = true;
+            v.setAttribute("webkit-playsinline", true);
+            vidContainer.appendChild(v);
+          });
+
+          /* ===== INITIAL BACKGROUND ===== */
+          if (images.length > 0) {
+            bg.style.backgroundImage = `url(photos/${images[0]})`;
+          }
+
+          /* ===== BACKGROUND SLIDESHOW ===== */
+          setInterval(() => {
+            if (!images.length) return;
+            bgIndex = (bgIndex + 1) % images.length;
+            bg.style.backgroundImage = `url(photos/${images[bgIndex]})`;
+          }, 5000);
+        });
+
+      function showTab(tab) {
+        document
+          .querySelectorAll(".tab")
+          .forEach((t) => t.classList.remove("active"));
+        document.getElementById("images").classList.add("hidden");
+        document.getElementById("videos").classList.add("hidden");
+
+        if (tab === "images") {
+          document.getElementById("images").classList.remove("hidden");
+          document.querySelectorAll(".tab")[0].classList.add("active");
+        } else {
+          document.getElementById("videos").classList.remove("hidden");
+          document.querySelectorAll(".tab")[1].classList.add("active");
+        }
+      }
+
+      function openImage(index) {
+        currentIndex = index;
+        const overlay = document.getElementById("imageOverlay");
+        const img = document.getElementById("overlayImg");
+
+        img.src = `photos/${images[index]}`;
+        img.style.transform = "scale(1)";
+        overlay.style.display = "flex";
+      }
+
+      function closeOverlay() {
+        document.getElementById("imageOverlay").style.display = "none";
+      }
+
+      function navigate(dir) {
+        currentIndex = (currentIndex + dir + images.length) % images.length;
+        document.getElementById("overlayImg").src =
+          `photos/${images[currentIndex]}`;
+      }
+
+      /* MOBILE TAP OUTSIDE CLOSE */
+      document.getElementById("imageOverlay").addEventListener("click", (e) => {
+        if (e.target.id === "imageOverlay") closeOverlay();
+      });
+    </script>
+  </body>
+</html>

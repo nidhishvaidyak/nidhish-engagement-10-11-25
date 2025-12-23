@@ -1,328 +1,80 @@
 <!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Media Gallery</title>
+<html>
+  <head>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Access Verification</title>
 
-<style>
-body {
-  margin: 0;
-  font-family: Arial, sans-serif;
-  background: #f4f6f8;
-}
+    <style>
+      body {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        height: 100vh;
+        font-family: Arial;
+        background: #f4f6f8;
+      }
+      .box {
+        background: white;
+        padding: 25px;
+        border-radius: 12px;
+        width: 90%;
+        max-width: 350px;
+        text-align: center;
+      }
+      input,
+      button {
+        width: 100%;
+        padding: 12px;
+        margin-top: 15px;
+      }
+      button {
+        background: #3b82f6;
+        color: white;
+        border: none;
+        border-radius: 8px;
+      }
+      .error {
+        color: red;
+        margin-top: 10px;
+      }
+    </style>
+  </head>
 
-header {
-  background: linear-gradient(135deg, #4f46e5, #3b82f6);
-  color: white;
-  padding: 20px;
-  text-align: center;
-  font-size: 24px;
-  font-weight: bold;
-}
+  <body>
+    <div class="box">
+      <h2>📱 Enter Phone Number</h2>
+      <input id="phone" type="tel" placeholder="10-digit number" />
+      <button onclick="checkAccess()">Continue</button>
+      <div id="error" class="error"></div>
+    </div>
 
-.tabs {
-  display: flex;
-  justify-content: center;
-  margin: 20px 0;
-}
+    <script>
+      let allowedPhones = [];
 
-.tab {
-  padding: 12px 30px;
-  margin: 0 10px;
-  border-radius: 25px;
-  background: #e5e7eb;
-  cursor: pointer;
-  font-weight: bold;
-}
+      fetch("allowed-phones.json")
+        .then((res) => res.json())
+        .then((data) => (allowedPhones = data.allowed))
+        .catch(() => {
+          document.getElementById("error").textContent =
+            "Unable to load access list";
+        });
 
-.tab.active {
-  background: #3b82f6;
-  color: white;
-}
+      function checkAccess() {
+        const phone = document.getElementById("phone").value.trim();
+        const error = document.getElementById("error");
 
-.content {
-  max-width: 1100px;
-  margin: auto;
-  padding: 20px;
-}
+        if (!allowedPhones.length) {
+          error.textContent = "Access list not loaded";
+          return;
+        }
 
-.grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-  gap: 20px;
-}
-
-img, video {
-  width: 100%;
-  height: 200px;
-  object-fit: cover;
-  border-radius: 15px;
-  box-shadow: 0 8px 20px rgba(0,0,0,0.15);
-  cursor: pointer;
-}
-
-.hidden {
-  display: none;
-}
-
-/* LIGHTBOX */
-.lightbox {
-  position: fixed;
-  inset: 0;
-  background: rgba(0,0,0,0.95);
-  display: none;
-  align-items: center;
-  justify-content: center;
-  z-index: 9999;
-  overflow: hidden;
-}
-
-.lightbox img {
-  max-width: 90vw;
-  max-height: 90vh;
-  object-fit: contain;
-  transition: transform 0.3s ease, opacity 0.3s ease;
-  user-select: none;
-  cursor: grab;
-  opacity: 1;
-}
-
-/* CLOSE BUTTON FIX */
-.close {
-  position: absolute;
-  top: 15px;
-  right: 20px;
-  font-size: 36px;
-  color: white;
-  cursor: pointer;
-  z-index: 10000;
-  padding: 10px;
-}
-
-.nav {
-  position: absolute;
-  top: 50%;
-  transform: translateY(-50%);
-  font-size: 40px;
-  color: white;
-  cursor: pointer;
-  padding: 10px;
-  background: rgba(0,0,0,0.3);
-  border-radius: 5px;
-}
-
-.nav-left { left: 20px; }
-.nav-right { right: 20px; }
-</style>
-</head>
-
-<body>
-
-<header>📁 Media Gallery</header>
-
-<div class="tabs">
-  <div class="tab active" onclick="showTab('images')">🖼 Images</div>
-  <div class="tab" onclick="showTab('videos')">🎥 Videos</div>
-</div>
-
-<div class="content">
-  <div id="images" class="grid"></div>
-  <div id="videos" class="grid hidden"></div>
-</div>
-
-<!-- IMAGE LIGHTBOX -->
-<div id="lightbox" class="lightbox">
-  <span class="close" id="closeBtn">&times;</span>
-  <span class="nav nav-left" onclick="prevImage()">&#10094;</span>
-  <span class="nav nav-right" onclick="nextImage()">&#10095;</span>
-</div>
-
-<script>
-const imageContainer = document.getElementById("images");
-const videoContainer = document.getElementById("videos");
-const lightbox = document.getElementById("lightbox");
-const closeBtn = document.getElementById("closeBtn");
-
-let images = [], videos = [];
-let currentIndex = 0;
-let currentImg = null;
-
-let scale = 1.2;   // 🔥 start zoomed
-let originX = 0, originY = 0;
-let isDragging = false;
-let startX, startY;
-
-// SWIPE
-let touchStartX = 0;
-let touchEndX = 0;
-
-// LOAD MEDIA
-fetch("media.json")
-  .then(res => res.json())
-  .then(data => {
-    images = data.images;
-    videos = data.videos;
-
-    // Images
-    images.forEach((file, i) => {
-      const img = document.createElement("img");
-      img.src = `photos/${file}`;
-      img.onclick = () => openLightbox(i);
-      imageContainer.appendChild(img);
-    });
-
-    // Videos (FULLSCREEN FIX)
-    videos.forEach(file => {
-      const vid = document.createElement("video");
-      vid.src = `videos/${file}`;
-      vid.controls = true;
-      vid.playsInline = true;
-
-      vid.addEventListener("click", () => {
-        if (vid.requestFullscreen) vid.requestFullscreen();
-        else if (vid.webkitEnterFullscreen) vid.webkitEnterFullscreen();
-      });
-
-      videoContainer.appendChild(vid);
-    });
-  });
-
-// TABS
-function showTab(tab) {
-  document.querySelectorAll(".tab").forEach(t => t.classList.remove("active"));
-  document.getElementById("images").classList.add("hidden");
-  document.getElementById("videos").classList.add("hidden");
-
-  if (tab === "images") {
-    document.getElementById("images").classList.remove("hidden");
-    document.querySelectorAll(".tab")[0].classList.add("active");
-  } else {
-    document.getElementById("videos").classList.remove("hidden");
-    document.querySelectorAll(".tab")[1].classList.add("active");
-  }
-}
-
-// OPEN LIGHTBOX
-function openLightbox(index) {
-  currentIndex = index;
-  scale = window.innerWidth < 768 ? 1.25 : 1.2;
-  originX = originY = 0;
-
-  if (currentImg) lightbox.removeChild(currentImg);
-
-  const img = document.createElement("img");
-  img.src = `photos/${images[currentIndex]}`;
-  img.onclick = toggleZoom;
-  currentImg = img;
-
-  lightbox.appendChild(img);
-  lightbox.style.display = "flex";
-  updateTransform();
-}
-
-// CLOSE
-function closeLightbox() {
-  lightbox.style.display = "none";
-  if (currentImg) lightbox.removeChild(currentImg);
-  currentImg = null;
-}
-
-// CLOSE BUTTON MOBILE FIX
-closeBtn.addEventListener("click", closeLightbox);
-closeBtn.addEventListener("touchstart", closeLightbox);
-
-// NAVIGATION
-function nextImage() {
-  currentIndex = (currentIndex + 1) % images.length;
-  openLightbox(currentIndex);
-}
-
-function prevImage() {
-  currentIndex = (currentIndex - 1 + images.length) % images.length;
-  openLightbox(currentIndex);
-}
-
-// CLICK ZOOM
-function toggleZoom() {
-  scale = scale === 1 ? 2 : 1;
-  originX = originY = 0;
-  updateTransform();
-}
-
-// WHEEL ZOOM
-lightbox.addEventListener("wheel", e => {
-  if (!currentImg) return;
-  e.preventDefault();
-  scale = Math.min(Math.max(1, scale + (e.deltaY < 0 ? 0.1 : -0.1)), 5);
-  updateTransform();
-});
-
-// DRAG
-lightbox.addEventListener("mousedown", e => {
-  if (scale <= 1) return;
-  isDragging = true;
-  startX = e.clientX - originX;
-  startY = e.clientY - originY;
-});
-
-document.addEventListener("mouseup", () => isDragging = false);
-
-document.addEventListener("mousemove", e => {
-  if (!isDragging) return;
-  originX = e.clientX - startX;
-  originY = e.clientY - startY;
-  updateTransform();
-});
-
-// TOUCH: PINCH + SWIPE
-let pinchStart = 0;
-
-lightbox.addEventListener("touchstart", e => {
-  if (e.touches.length === 1) {
-    touchStartX = e.touches[0].clientX;
-  }
-});
-
-lightbox.addEventListener("touchmove", e => {
-  if (!currentImg) return;
-
-  if (e.touches.length === 2) {
-    e.preventDefault();
-    const d = Math.hypot(
-      e.touches[0].clientX - e.touches[1].clientX,
-      e.touches[0].clientY - e.touches[1].clientY
-    );
-    if (!pinchStart) pinchStart = d;
-    scale = Math.min(Math.max(1, scale + (d - pinchStart) / 200), 5);
-    pinchStart = d;
-    updateTransform();
-  } else {
-    touchEndX = e.touches[0].clientX;
-  }
-}, { passive: false });
-
-lightbox.addEventListener("touchend", () => {
-  if (Math.abs(touchStartX - touchEndX) > 50) {
-    touchStartX > touchEndX ? nextImage() : prevImage();
-  }
-  pinchStart = 0;
-});
-
-// UPDATE TRANSFORM
-function updateTransform() {
-  if (!currentImg) return;
-  currentImg.style.transform =
-    `scale(${scale}) translate(${originX / scale}px, ${originY / scale}px)`;
-}
-
-// KEYBOARD
-document.addEventListener("keydown", e => {
-  if (e.key === "Escape") closeLightbox();
-  if (e.key === "ArrowRight") nextImage();
-  if (e.key === "ArrowLeft") prevImage();
-});
-</script>
-
-</body>
+        if (allowedPhones.includes(phone)) {
+          sessionStorage.setItem("authorized", "yes");
+          window.location.href = "gallery.html";
+        } else {
+          error.textContent = "❌ Phone number not registered, Please contact admin or call 9845607565.";
+        }
+      }
+    </script>
+  </body>
 </html>
