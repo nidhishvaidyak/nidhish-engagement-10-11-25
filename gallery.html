@@ -2,25 +2,27 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, user-scalable=yes"
+    />
     <title>Nidhish & Sthuthi</title>
 
     <style>
-      /* ===== BACKGROUND SLIDESHOW ===== */
+      /* ===== BACKGROUND ===== */
       .bg {
         position: fixed;
         inset: 0;
         background-size: cover;
         background-position: center;
         filter: blur(18px) brightness(0.6);
-        transition: background-image 1.2s ease-in-out;
         z-index: -1;
+        transition: background-image 1.2s ease-in-out;
       }
 
       body {
         margin: 0;
         font-family: Arial, sans-serif;
-        background: transparent;
       }
 
       header {
@@ -58,22 +60,22 @@
         padding: 15px;
       }
 
-      /* Images */
+      /* IMAGES */
       .grid img {
         width: 100%;
         height: 160px;
         object-fit: cover;
         border-radius: 12px;
         cursor: pointer;
+        -webkit-touch-callout: none;
+        user-select: none;
       }
 
-      /* Videos – bigger & usable controls */
+      /* VIDEOS */
       .grid video {
         width: 200%;
-        height: 220px;
-        /* 🔥 bigger */
+        height: 260px;
         object-fit: contain;
-        /* important for controls */
         border-radius: 12px;
         background: black;
       }
@@ -82,7 +84,7 @@
         display: none;
       }
 
-      /* ===== FULLSCREEN IMAGE OVERLAY ===== */
+      /* ===== FULLSCREEN IMAGE ===== */
       .overlay {
         position: fixed;
         inset: 0;
@@ -93,92 +95,64 @@
         z-index: 1000;
       }
 
+      .overlay img {
+        max-width: 90%;
+        max-height: 90%;
+        transition: transform 0.3s ease;
+        touch-action: pinch-zoom;
+        user-select: none;
+        -webkit-user-drag: none;
+      }
+
       .close {
-        position: absolute;
+        position: fixed;
         top: 15px;
         right: 20px;
         font-size: 35px;
         color: white;
         cursor: pointer;
-        z-index: 1001;
+        z-index: 1002;
       }
 
       .nav {
-        position: absolute;
-        top: 50%;
-        font-size: 40px;
-        color: white;
-        cursor: pointer;
-        user-select: none;
-      }
-
-      .overlay {
         position: fixed;
-        inset: 0;
-        background: rgba(0, 0, 0, 0.95);
-        display: none;
-        align-items: center;
-        justify-content: center;
-        z-index: 1000;
-      }
-
-      /* Image */
-      .overlay img {
-        max-width: 90%; /* slightly smaller than before */
-        max-height: 90%;
-        transform: scale(1);
-        transition: transform 0.3s ease;
-        z-index: 1001; /* below nav arrows */
-        pointer-events: none; /* prevent image from blocking arrow clicks */
-      }
-
-      /* Arrows */
-      .nav.left,
-      .nav.right {
-        position: fixed; /* 🔹 fixed so always outside image */
         top: 50%;
-        font-size: 40px;
+        transform: translateY(-50%);
+        font-size: 36px;
         color: white;
         cursor: pointer;
-        user-select: none;
-        transform: translateY(-50%);
         z-index: 1002;
-        padding: 10px;
-        background: rgba(0, 0, 0, 0.3); /* optional: make arrow visible */
+        padding: 14px;
+        background: rgba(0, 0, 0, 0.45);
         border-radius: 50%;
+        user-select: none;
       }
 
       .nav.left {
-        left: 5px;
+        left: 10px;
       }
       .nav.right {
-        right: 5px;
+        right: 10px;
       }
 
-      /* Mobile bigger tap area */
-      @media (max-width: 600px) {
-        .nav.left,
-        .nav.right {
-          font-size: 20px;
-          padding: 10px;
-        }
-      }
-
+      /* MOBILE */
       @media (max-width: 600px) {
         .grid img {
           height: 130px;
         }
-
         .grid video {
-          height: 200px;
-          /* mobile-friendly */
+          height: 220px;
+          width: 200%;
+        }
+        .nav {
+          font-size: 26px;
+          padding: 12px;
         }
       }
     </style>
   </head>
 
   <body>
-    <!-- BACKGROUND -->
     <div class="bg" id="bg"></div>
 
     <header>Nidhish & Sthuthi Engagement • 10-11-2025</header>
@@ -191,7 +165,7 @@
     <div id="images" class="grid"></div>
     <div id="videos" class="grid hidden"></div>
 
-    <!-- FULLSCREEN IMAGE -->
+    <!-- IMAGE OVERLAY -->
     <div class="overlay" id="imageOverlay">
       <span class="close" onclick="closeOverlay()">✕</span>
       <span class="nav left" onclick="navigate(-1)">❮</span>
@@ -200,7 +174,7 @@
     </div>
 
     <script>
-      /* ===== SECURITY CHECK ===== */
+      /* ===== SECURITY ===== */
       if (sessionStorage.getItem("authorized") !== "yes") {
         document.body.innerHTML =
           "<h2 style='text-align:center;margin-top:50px;'>❌ Access Denied</h2>";
@@ -209,8 +183,10 @@
       let images = [];
       let currentIndex = 0;
       let bgIndex = 0;
+      let rotation = 0;
 
       const bg = document.getElementById("bg");
+      const overlayImg = document.getElementById("overlayImg");
 
       fetch("media.json")
         .then((res) => res.json())
@@ -220,7 +196,6 @@
           const imgContainer = document.getElementById("images");
           const vidContainer = document.getElementById("videos");
 
-          /* ===== LOAD IMAGES ===== */
           data.images.forEach((img, index) => {
             const el = document.createElement("img");
             el.src = `photos/${img}`;
@@ -228,24 +203,20 @@
             imgContainer.appendChild(el);
           });
 
-          /* ===== LOAD VIDEOS (UNCHANGED) ===== */
           data.videos.forEach((video) => {
             const v = document.createElement("video");
             v.src = `videos/${video}`;
             v.controls = true;
+            v.controlsList = "nodownload";
             v.playsInline = true;
-            v.setAttribute("webkit-playsinline", true);
             vidContainer.appendChild(v);
           });
 
-          /* ===== INITIAL BACKGROUND ===== */
-          if (images.length > 0) {
+          if (images.length) {
             bg.style.backgroundImage = `url(photos/${images[0]})`;
           }
 
-          /* ===== BACKGROUND SLIDESHOW ===== */
           setInterval(() => {
-            if (!images.length) return;
             bgIndex = (bgIndex + 1) % images.length;
             bg.style.backgroundImage = `url(photos/${images[bgIndex]})`;
           }, 5000);
@@ -255,26 +226,26 @@
         document
           .querySelectorAll(".tab")
           .forEach((t) => t.classList.remove("active"));
-        document.getElementById("images").classList.add("hidden");
-        document.getElementById("videos").classList.add("hidden");
+        imagesDiv = document.getElementById("images");
+        videosDiv = document.getElementById("videos");
+        imagesDiv.classList.add("hidden");
+        videosDiv.classList.add("hidden");
 
         if (tab === "images") {
-          document.getElementById("images").classList.remove("hidden");
+          imagesDiv.classList.remove("hidden");
           document.querySelectorAll(".tab")[0].classList.add("active");
         } else {
-          document.getElementById("videos").classList.remove("hidden");
+          videosDiv.classList.remove("hidden");
           document.querySelectorAll(".tab")[1].classList.add("active");
         }
       }
 
       function openImage(index) {
         currentIndex = index;
-        const overlay = document.getElementById("imageOverlay");
-        const img = document.getElementById("overlayImg");
-
-        img.src = `photos/${images[index]}`;
-        img.style.transform = "scale(1)";
-        overlay.style.display = "flex";
+        rotation = 0;
+        overlayImg.src = `photos/${images[index]}`;
+        overlayImg.style.transform = "rotate(0deg)";
+        document.getElementById("imageOverlay").style.display = "flex";
       }
 
       function closeOverlay() {
@@ -283,12 +254,22 @@
 
       function navigate(dir) {
         currentIndex = (currentIndex + dir + images.length) % images.length;
-        document.getElementById(
-          "overlayImg"
-        ).src = `photos/${images[currentIndex]}`;
+        rotation = 0;
+        overlayImg.src = `photos/${images[currentIndex]}`;
+        overlayImg.style.transform = "rotate(0deg)";
       }
 
-      /* MOBILE TAP OUTSIDE CLOSE */
+      /* 🔄 ROTATE ON TAP */
+      overlayImg.addEventListener("click", (e) => {
+        e.stopPropagation();
+        rotation = (rotation + 90) % 360;
+        overlayImg.style.transform = `rotate(${rotation}deg)`;
+      });
+
+      /* 🚫 DISABLE RIGHT CLICK */
+      document.addEventListener("contextmenu", (e) => e.preventDefault());
+
+      /* TAP OUTSIDE CLOSE */
       document.getElementById("imageOverlay").addEventListener("click", (e) => {
         if (e.target.id === "imageOverlay") closeOverlay();
       });
