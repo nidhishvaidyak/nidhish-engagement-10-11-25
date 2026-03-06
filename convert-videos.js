@@ -5,38 +5,33 @@ const { execSync } = require("child_process");
 const videoDir = path.join(__dirname, "videos");
 
 const inputExt = [".mpg", ".mpeg", ".mov", ".avi", ".mkv"];
-const outputExt = ".mp4";
+const TARGET_SECONDS = 80; // ≈ 80–90MB depending on bitrate
 
-function convertVideos() {
-  const files = fs.readdirSync(videoDir);
+function convertAndSplitVideos() {
+    const files = fs.readdirSync(videoDir);
 
-  files.forEach((file) => {
-    const ext = path.extname(file).toLowerCase();
-    if (!inputExt.includes(ext)) return;
+    files.forEach((file) => {
+        const ext = path.extname(file).toLowerCase();
+        if (!inputExt.includes(ext)) return;
 
-    const inputPath = path.join(videoDir, file);
-    const outputPath = path.join(
-      videoDir,
-      path.basename(file, ext) + outputExt
-    );
+        const baseName = path.basename(file, ext);
+        const inputPath = path.join(videoDir, file);
+        const outputPattern = path.join(
+            videoDir,
+            `${baseName}_part%03d.mp4`
+        );
 
-    if (fs.existsSync(outputPath)) {
-      console.log(`⏭️ Skipping (already exists): ${outputPath}`);
-      return;
-    }
+        console.log(`🎬 Converting & splitting: ${file}`);
 
-    console.log(`🎬 Converting ${file} → ${path.basename(outputPath)}`);
+        const cmd = `ffmpeg -y -i "${inputPath}" -c:v libx264 -profile:v high -level 4.2 -pix_fmt yuv420p -c:a aac -b:a 192k -movflags +faststart -map 0 -f segment -segment_time ${TARGET_SECONDS} -reset_timestamps 1 "${outputPattern}"`;
 
-    // 🔥 SINGLE-LINE FFmpeg COMMAND (VERY IMPORTANT)
-    const cmd = `ffmpeg -y -i "${inputPath}" -c:v libx264 -profile:v high -level 4.2 -pix_fmt yuv420p -movflags +faststart -c:a aac -b:a 192k "${outputPath}"`;
-
-    try {
-      execSync(cmd, { stdio: "inherit" });
-      console.log(`✅ Converted: ${outputPath}`);
-    } catch (err) {
-      console.error(`❌ Failed: ${file}`);
-    }
-  });
+        try {
+            execSync(cmd, { stdio: "inherit" });
+            console.log(`✅ Done: ${baseName}_partXXX.mp4`);
+        } catch (err) {
+            console.error(`❌ Failed: ${file}`);
+        }
+    });
 }
 
-convertVideos();
+convertAndSplitVideos();
